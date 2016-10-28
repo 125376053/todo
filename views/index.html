@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html ng-app="zhang">
+<head>
+    <title>张超杰待办事项</title>
+    <script src="/javascripts/angular.js"></script>
+    <style>
+        .loading{width:100px;height:100px;border-radius:50%; background:rgba(0,0,0,0.2);margin:0 auto;}
+    </style>
+</head>
+<body ng-controller="hehe">
+
+<h1>待办事项<span>{{todos.length}}</span>条</h1>
+
+<!--搜索区域-->
+过滤<input type="text" ng-model="keyword">
+
+<!--loading 操作之前变量为true 操作之后变量为false-->
+<div ng-show="loading" class="loading"></div>
+
+<ul>
+    <li ng-repeat="todo in todos">
+        <input type="checkbox" value="{{todo._id}}">
+        <span>{{todo.text}}</span>
+        <a href="###" ng-click="delete(todo._id)">删除</a>
+        <a href="###" ng-click="edit(todo._id,todo.text)">编辑</a>
+        <!--编辑显示文本  传入text对应文本 而这个text正好和模型挂钩了-->
+    </li>
+</ul>
+
+<form>
+    新增的文本<input type="text" ng-model="todo.text"> <br>
+    对应的id<input type="text" ng-model="todo._id"> <br>
+    <input type="button" value="保存" ng-click="save()">
+    <input type="button" value="批量删除" ng-click="delete2()">
+</form>
+
+</body>
+</html>
+<script>
+    var app=angular.module('zhang',[]);
+
+    app.controller('hehe',function($scope,$http){
+
+        $scope.todos=[]; //原始数据
+        $scope.todosFilter=[]; //过滤数据
+
+        //过滤
+        $scope.$watch('keyword',function(){
+            $scope.todos=$scope.todosFilter.filter(function(todo){
+                console.log(todo.text)
+                return todo.text.indexOf($scope.keyword)!=-1;
+            })
+        })
+
+        //获取所有数据
+        $http({
+            url:'/api/todos',
+            method:'get'
+        }).success(function(data){
+            $scope.todos=$scope.todosFilter=data;
+        })
+
+        //将数据保存到数据库
+        $scope.save=function(){
+            $scope.loading=true;
+            if($scope.todo.text!=undefined){
+                $http({
+                    url:'/api/todos',
+                    method:'post',
+                    data:$scope.todo  //不能发送字符串 只能发送对象
+                }).success(function(data){
+                    $scope.todos=$scope.todosFilter=data; //点击追加 就是在赋值一遍
+                    $scope.todo.text="";
+                    $scope.loading=false;
+                })
+           }
+        }
+
+        //删除数据
+        $scope.delete=function(id){
+            $scope.loading=true;
+            $http({
+                url:'/api/todos/'+id,
+                method:'get'
+            }).success(function(data){
+                $scope.todos=$scope.todosFilter=data; //点击追加 就是在赋值一遍
+                $scope.loading=false;
+            })
+        }
+
+
+        //编辑数据---------就干了一件事 将input模型与实体数据挂钩 那么模型就显示数据了
+        //点击编辑 设置 文本值和id
+        $scope.edit=function(_id,text){
+            $scope.todo={
+                _id:_id,
+                text:text
+            }
+        }
+
+        //批量删除
+        $scope.delete2= function(){
+            $scope.loading=true;
+            var ids = [];
+            var cks = document.getElementsByTagName('input');
+            for(var i=0;i<cks.length;i++){
+                if(cks[i].checked)
+                    ids.push(cks[i].value); //为什么要把value放到数组里面 因为value记录了数据库的id
+            }
+
+            $http({
+                url:'/api/todos/batchDelete',
+                method:'post',
+                data:ids  //不能发送字符串 只能发送对象
+            }).success(function(data){
+                $scope.todos=$scope.todosFilter=data; //点击追加 就是在赋值一遍
+                $scope.loading=false;
+            })
+        }
+
+    })
+</script>
